@@ -335,7 +335,23 @@ body::after{
 #uptime-display.show{display:block;}
 #uptime-val{color:rgba(255,0,51,.5);}
 
-/* ── MOBILE BG — CSS only, no canvas ── */
+
+/* on touch: reposition vis-panel to bottom, hide py-term */
+@media(hover:none){
+  #vis-panel{
+    position:fixed;
+    top:auto;bottom:clamp(72px,15vw,100px);
+    left:clamp(12px,3vw,20px);
+    font-size:10px;letter-spacing:.16em;
+    max-width:55vw;
+  }
+  #py-term{ display:none!important; }
+  #uptime-display{
+    position:fixed;bottom:clamp(56px,11vw,76px);
+    left:50%;transform:translateX(-50%);
+    font-size:9px;
+  }
+}
 @media(hover:none){
   body{
     background:
@@ -343,7 +359,6 @@ body::after{
       radial-gradient(ellipse 40% 35% at 80% 70%, rgba(40,0,8,0.6) 0%, transparent 65%),
       #020a02;
   }
-  /* subtle animated dots */
   #cvs{display:none;}
   #mobile-dots{display:block;}
 }
@@ -360,56 +375,11 @@ body::after{
   0%  {transform:translateY(100vh) translateX(0);   opacity:0;}
   8%  {opacity:1;}
   92% {opacity:.4;}
-  100%{transform:translateY(-8vh)  translateX(var(--dx)); opacity:0;}
+  100%{transform:translateY(-8vh) translateX(var(--dx)); opacity:0;}
 }
 
 /* scan bar — hide on small phones */
 @media(max-width:420px){#scan-bar{display:none;}}
-
-/* ── MOBILE INFO BLOCK (под ссылками) ── */
-#mobile-info{
-  display:none;
-  flex-direction:column;gap:14px;
-  width:100%;max-width:min(360px,90vw);
-  margin-top:16px;
-  opacity:0;transform:translateY(8px);
-  transition:opacity .8s ease,transform .8s ease;
-}
-#mobile-info.show{opacity:1;transform:none;}
-
-/* visitor data mobile */
-#mob-vis{
-  font-size:10px;letter-spacing:.18em;line-height:2;
-  border:1px solid rgba(255,0,51,.15);
-  padding:10px 12px;
-  background:rgba(255,0,51,.02);
-}
-#mob-vis .vk{color:rgba(255,0,51,.5);}
-#mob-vis .vv{color:rgba(0,255,65,.55);}
-#mob-vis-title{font-size:8px;letter-spacing:.42em;color:rgba(255,0,51,.35);text-transform:uppercase;margin-bottom:6px;}
-
-/* python terminal mobile */
-#mob-py{
-  font-size:10px;letter-spacing:.12em;line-height:1.85;
-  border:1px solid rgba(0,255,65,.12);
-  padding:10px 12px;
-  background:rgba(0,255,65,.015);
-}
-#mob-py-header{font-size:8px;letter-spacing:.3em;color:rgba(0,255,65,.25);margin-bottom:6px;}
-#mob-py .py-prompt{color:rgba(255,0,51,.6);}
-#mob-py .py-out{color:rgba(0,255,65,.75);display:block;}
-#mob-py .py-err{color:rgba(255,80,80,.7);display:block;font-size:.9em;}
-
-/* uptime mobile */
-#mob-uptime{
-  font-size:9px;letter-spacing:.3em;
-  color:rgba(255,0,51,.35);text-align:center;
-}
-#mob-uptime span{color:rgba(255,0,51,.55);}
-
-@media(hover:hover){
-  #mobile-info{display:none!important;}
-}
 
 #hp{position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;}
 
@@ -492,18 +462,6 @@ body::after{
         <span class="lnk-name">@SABAKIN_EBET</span>
         <span class="lnk-tag">tg</span>
       </a>
-    </div>
-
-    <!-- MOBILE INFO BLOCK — visible only on touch devices -->
-    <div id="mobile-info">
-      <div id="mob-vis">
-        <div id="mob-vis-title">[ visitor_data ]</div>
-      </div>
-      <div id="mob-py">
-        <div id="mob-py-header">python 3.11.2 [nullface build]</div>
-        <div id="mob-py-lines"></div>
-      </div>
-      <div id="mob-uptime">uptime: <span id="mob-uptime-val">4d 12h 33m 0s</span></div>
     </div>
   </div>
 
@@ -975,18 +933,6 @@ function showVisitorData(){
       panel.appendChild(line);
     },i*280);
   });
-
-  // mobile panel
-  if(isTouch){
-    const mobVis=$('mob-vis');
-    rows.forEach((r,i)=>{
-      setTimeout(()=>{
-        const line=document.createElement('div');
-        line.innerHTML=`<span class="vk">${r[0]}</span><span style="color:rgba(255,0,51,.3)">: </span><span class="vv">${r[1]}</span>`;
-        mobVis.appendChild(line);
-      },i*280);
-    });
-  }
 }
 
 // ══════════════════════════════════════
@@ -994,14 +940,12 @@ function showVisitorData(){
 // ══════════════════════════════════════
 function startUptime(){
   const el=$('uptime-display'),val=$('uptime-val');
-  const mobUp=$('mob-uptime-val');
   const fakeBase=4*86400+12*3600+33*60;
   let sec=fakeBase;
   el.classList.add('show');
   function fmt(s){const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),ss=s%60;return`${d}d ${h}h ${m}m ${ss}s`;}
   val.textContent=fmt(sec);
-  if(mobUp)mobUp.textContent=fmt(sec);
-  setInterval(()=>{sec++;val.textContent=fmt(sec);if(mobUp)mobUp.textContent=fmt(sec);},1000);
+  setInterval(()=>{sec++;val.textContent=fmt(sec);},1000);
 }
 
 // ══════════════════════════════════════
@@ -1009,66 +953,38 @@ function startUptime(){
 // ══════════════════════════════════════
 function startPyTerminal(){
   const term=$('py-term'),lines=$('py-lines');
-  const mobLines=$('mob-py-lines');
   term.classList.add('show');
-
   const SESSIONS=[
     {cmd:'print("Hello World")', out:'Hello World',                                     delay:0},
     {cmd:'import nullface',      err:"ModuleNotFoundError: No module named 'nullface'", delay:4200},
     {cmd:'print("access"*999)',  out:'accessaccessaccessaccess...',                     delay:9000},
     {cmd:'exit()',               out:'',                                                delay:14000},
   ];
-
-  SESSIONS.forEach(s=>setTimeout(()=>typeCommand(s,lines,mobLines),s.delay));
-  setTimeout(()=>{
-    lines.innerHTML='';
-    if(mobLines)mobLines.innerHTML='';
-    startPyTerminal();
-  },19000);
+  SESSIONS.forEach(s=>setTimeout(()=>typeCommand(s,lines),s.delay));
+  setTimeout(()=>{lines.innerHTML='';startPyTerminal();},19000);
 }
 
-function typeCommand(session,lines,mobLines){
-  // desktop
-  const promptLine=document.createElement('div');
+function typeCommand(session,lines){
   const uid=Date.now()+Math.random();
   const typingId='pty'+uid,curId='pcu'+uid;
+  const promptLine=document.createElement('div');
   promptLine.innerHTML=`<span class="py-prompt">&gt;&gt;&gt; </span><span id="${typingId}"></span><span id="${curId}" style="display:inline-block;width:5px;height:1em;background:rgba(0,255,65,.6);vertical-align:text-bottom;animation:blink-cur .7s step-end infinite;"></span>`;
   lines.appendChild(promptLine);
-
-  // mobile mirror
-  let mobPromptLine=null;
-  if(mobLines){
-    mobPromptLine=document.createElement('div');
-    const mt='mty'+uid,mc='mcu'+uid;
-    mobPromptLine.innerHTML=`<span class="py-prompt">&gt;&gt;&gt; </span><span id="${mt}"></span><span id="${mc}" style="display:inline-block;width:5px;height:1em;background:rgba(0,255,65,.6);vertical-align:text-bottom;animation:blink-cur .7s step-end infinite;"></span>`;
-    mobLines.appendChild(mobPromptLine);
-  }
-
   const cmd=session.cmd;let ci=0;
   const iv=setInterval(()=>{
     const el=document.getElementById(typingId);
-    const mel=document.getElementById('mty'+uid);
     if(!el){clearInterval(iv);return;}
-    const ch=cmd[ci++];
-    el.textContent+=ch;
-    if(mel)mel.textContent+=ch;
+    el.textContent+=cmd[ci++];
     if(ci>=cmd.length){
       clearInterval(iv);
       document.getElementById(curId)?.remove();
-      document.getElementById('mcu'+uid)?.remove();
       setTimeout(()=>{
-        const addLine=(parent,cls,txt)=>{
-          if(!parent)return;
-          const s=document.createElement('span');s.className=cls;s.textContent=txt;parent.appendChild(s);
-          while(parent.children.length>12)parent.removeChild(parent.firstChild);
-        };
         if(session.err){
-          addLine(lines,'py-err',session.err);
-          addLine(mobLines,'py-err',session.err);
+          const e=document.createElement('span');e.className='py-err';e.textContent=session.err;lines.appendChild(e);
         } else if(session.out){
-          addLine(lines,'py-out',session.out);
-          addLine(mobLines,'py-out',session.out);
+          const o=document.createElement('span');o.className='py-out';o.textContent=session.out;lines.appendChild(o);
         }
+        while(lines.children.length>12)lines.removeChild(lines.firstChild);
       },320);
     }
   },55);
@@ -1091,14 +1007,8 @@ $('intro-btn').addEventListener(isTouch?'touchstart':'click',async e=>{
     fetchGeo();
     showVisitorData();
     startUptime();
-    // show mobile info block
-    if(isTouch){
-      const mi=$('mobile-info');
-      mi.style.display='flex';
-      setTimeout(()=>mi.classList.add('show'),200);
-    }
-    // python terminal — slight delay so it doesn't clash with boot
-    setTimeout(startPyTerminal, 1800);
+    // python terminal — desktop only (no duplicates on mobile)
+    if(!isTouch) setTimeout(startPyTerminal, 1800);
     // start dox words — fewer on touch
     const doxInterval=isTouch?5000:2800;
     const doxInit=isTouch?2:4;
